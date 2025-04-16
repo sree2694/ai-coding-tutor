@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "axios": "^1.8.4",
+    "react-scroll-to-bottom": "^4.2.0"
+  }
+}
