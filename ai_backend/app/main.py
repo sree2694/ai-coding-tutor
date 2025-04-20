@@ -1,28 +1,18 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.router import router
-from dotenv import load_dotenv
-import os
+from app.api.chat import router as chat_router
+from app.api.execute import router as execute_router
 
-app = FastAPI(title="AI Code Editor & Chatbot")
+app = FastAPI()
 
-load_dotenv()  # take environment variables from .env
+# Include the code and chat routes
+app.include_router(chat_router, prefix="/api")
+app.include_router(execute_router)
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-
-# Allow cross-origin requests from the frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Frontend will be on localhost or similar, adjust as needed
+    allow_origins=["*"],  # Update with your frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Include all router endpoints (from chatbot and code execution)
-app.include_router(router)
-
-
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the AI Code Editor & Chatbot API"}
