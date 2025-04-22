@@ -1,13 +1,9 @@
-# backend/api/chat.py
-
-from fastapi import APIRouter, HTTPException, Request
+# app/api/chat.py
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-import openai
-import os
+from app.services.openai_service import get_chat_response
 
 router = APIRouter()
-
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
 class ChatRequest(BaseModel):
     question: str
@@ -17,16 +13,7 @@ class ChatRequest(BaseModel):
 async def chat(request: ChatRequest):
     try:
         prompt = f"You are a coding tutor helping a student. The student's code is:\n{request.code}\n\nQuestion: {request.question}\nGive a helpful answer."
-
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful AI tutor for competitive coding."},
-                {"role": "user", "content": prompt}
-            ]
-        )
-
-        return {"reply": response.choices[0].message['content'].strip()}
-    
+        response = get_chat_response(prompt, model="gpt-3.5-turbo")
+        return {"reply": response}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

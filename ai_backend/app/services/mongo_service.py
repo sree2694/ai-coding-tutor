@@ -1,22 +1,20 @@
-from pymongo import MongoClient
+# app/services/mongo_service.py
+from motor.motor_asyncio import AsyncIOMotorClient
 from app.utils.config import MONGO_URI, MONGO_DB_NAME
 
-# Create a MongoDB client
-client = MongoClient(MONGO_URI)
-
-# Access the database
+client = AsyncIOMotorClient(MONGO_URI)
 db = client[MONGO_DB_NAME]
 
-def save_code_execution_data(file_name: str, code: str, result: str):
+async def save_code_execution_data(file_name: str, code: str, result: str):
     collection = db['executions']
     document = {
         'file_name': file_name,
         'code': code,
         'result': result,
     }
-    result = collection.insert_one(document)
+    result = await collection.insert_one(document)
     return str(result.inserted_id)
 
-def get_code_executions():
+async def get_code_executions():
     collection = db['executions']
-    return list(collection.find())
+    return await collection.find().to_list(length=100)

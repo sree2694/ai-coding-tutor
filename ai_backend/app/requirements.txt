@@ -1,7 +1,9 @@
 fastapi
 uvicorn[gunicorn]
-openai
+openai  # or your own model
 pydantic
 motor
 python-dotenv
 requests
+aiofiles
+httpx
