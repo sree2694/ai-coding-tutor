@@ -7,3 +7,4 @@ python-dotenv
 requests
 aiofiles
 httpx
+pymongo==4.12.0

@@ -12,17 +12,22 @@ class CodeRequest(BaseModel):
     language: str
     file_name: str = "code.py"
 
+
 @router.post("/execute/inline")
 async def execute_inline(req: CodeRequest):
     try:
         if req.language.lower() == "python":
+            # Execute the Python code inline
             exec_result = subprocess.run(
                 ["python3", "-c", req.code],
                 capture_output=True,
                 text=True,
                 timeout=5
             )
-            return {"output": exec_result.stdout or exec_result.stderr}
+
+            # Assign the result to a variable and return it
+            result = exec_result.stdout or exec_result.stderr
+            return {"output": result}
         else:
             return {"output": f"Language {req.language} not supported yet."}
     except Exception as e:

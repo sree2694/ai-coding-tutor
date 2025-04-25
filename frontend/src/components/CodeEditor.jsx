@@ -6,64 +6,66 @@ import {
 import MonacoEditor from '@monaco-editor/react';
 import axios from 'axios';
 
-const CodeEditor = () => {
+const CodeEditor = ({ codeContent, setCodeContent, selectedLanguage, setSelectedLanguage }) => {
   const [isDark, setIsDark] = useState(false);
-  const [tabs, setTabs] = useState([{ id: 1, name: 'file1', code: '', language: 'javascript' }]);
+  const [tabs, setTabs] = useState([{ id: 1, name: 'file1', code: codeContent, language: selectedLanguage }]);
   const [activeTab, setActiveTab] = useState(0);
   const [chatInput, setChatInput] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
 
-  // Theme toggle
-  const handleThemeToggle = () => {
-    setIsDark((prev) => !prev);
-  };
-  
+  // Handle theme toggle
+  const toggleTheme = () => setIsDark(prev => !prev);
 
-  // Tab controls
-  const handleAddTab = () => {
+  // Tab management functions
+  const addNewTab = () => {
     const newTab = { id: tabs.length + 1, name: `file${tabs.length + 1}`, code: '', language: 'javascript' };
     setTabs([...tabs, newTab]);
     setActiveTab(tabs.length);
   };
 
-  const handleTabChange = (e, index) => setActiveTab(index);
+  const switchTab = (e, index) => setActiveTab(index);
 
-  const handleCodeChange = (newCode) => {
+  const updateCode = (newCode) => {
+    setCodeContent(newCode);  // Update the code content in the parent component
     const updatedTabs = [...tabs];
     updatedTabs[activeTab].code = newCode;
     setTabs(updatedTabs);
   };
 
-  const handleLanguageChange = (e) => {
+  const updateLanguage = (e) => {
+    setSelectedLanguage(e.target.value);  // Update the language in the parent component
     const updatedTabs = [...tabs];
     updatedTabs[activeTab].language = e.target.value;
     setTabs(updatedTabs);
   };
 
-  // Code execution
-  const handleRunCode = async () => {
-    const { code, language } = tabs[activeTab];
+  // Handle code execution
+  const runCode = async () => {
     try {
-      const res = await axios.post('http://localhost:5000/execute', { code, language });
-      alert(`Result:\n${res.data.output}`);
-    } catch (err) {
-      alert('Execution failed: ' + err.message);
+      const response = await axios.post('http://localhost:8000/api/execute/inline', {
+        code: codeContent,
+        language: selectedLanguage,
+      });
+
+      console.log(response.data);  // Handle the response
+    } catch (error) {
+      console.error('Execution failed:', error);
     }
   };
 
-  // AI Chat Prompt
-  const handleChatSubmit = async () => {
+  // Handle chat functionality
+  const submitChat = async () => {
     if (!chatInput.trim()) return;
 
     const userMessage = { sender: 'user', text: chatInput };
     setChatHistory([...chatHistory, userMessage]);
 
     try {
-      const res = await axios.post('http://localhost:5000/chat', { prompt: chatInput });
-      const botMessage = { sender: 'bot', text: res.data.reply };
-      setChatHistory((prev) => [...prev, botMessage]);
+      const response = await axios.post('http://localhost:8000/chat', { prompt: chatInput });
+      const botMessage = { sender: 'bot', text: response.data.reply };
+      setChatHistory(prev => [...prev, botMessage]);
     } catch (err) {
-      setChatHistory((prev) => [...prev, { sender: 'bot', text: 'Error: Unable to respond.' }]);
+      setChatHistory(prev => [...prev, { sender: 'bot', text: 'Error: Unable to respond.' }]);
     }
 
     setChatInput('');
@@ -75,31 +77,24 @@ const CodeEditor = () => {
         <Toolbar>
           <Typography variant="h6">AI Code Playground</Typography>
           <FormControlLabel
-            control={<Switch checked={isDark} onChange={handleThemeToggle} />}
+            control={<Switch checked={isDark} onChange={toggleTheme} />}
             label="Dark Mode"
             sx={{ marginLeft: 'auto' }}
           />
         </Toolbar>
       </AppBar>
 
-      <Tabs value={activeTab} onChange={handleTabChange} variant="scrollable" scrollButtons>
+      <Tabs value={activeTab} onChange={switchTab} variant="scrollable" scrollButtons>
         {tabs.map((tab, index) => (
           <Tab key={tab.id} label={tab.name} />
         ))}
       </Tabs>
 
       <Box sx={{ display: 'flex', flexDirection: 'row', p: 2, gap: 2 }}>
-        {/* === Monaco Code Editor === */}
+        {/* Code Editor Section */}
         <Box flex={2}>
           <Paper sx={{ p: 1, mb: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel>Language</InputLabel>
-              <Select value={tabs[activeTab].language} onChange={handleLanguageChange} label="Language">
-                <MenuItem value="javascript">JavaScript</MenuItem>
-                <MenuItem value="python">Python</MenuItem>
-                <MenuItem value="java">Java</MenuItem>
-              </Select>
-            </FormControl>
+            <LanguageSelector language={tabs[activeTab].language} onChange={updateLanguage} />
           </Paper>
 
           <MonacoEditor
@@ -107,24 +102,20 @@ const CodeEditor = () => {
             language={tabs[activeTab].language}
             value={tabs[activeTab].code}
             theme={isDark ? 'vs-dark' : 'light'}
-            onChange={handleCodeChange}
+            onChange={updateCode}
           />
 
           <Box sx={{ mt: 2 }}>
-            <Button variant="contained" onClick={handleRunCode}>Run</Button>
-            <Button variant="outlined" onClick={handleAddTab} sx={{ ml: 2 }}>+ New File</Button>
+            <Button variant="contained" onClick={runCode}>Run</Button>
+            <Button variant="outlined" onClick={addNewTab} sx={{ ml: 2 }}>+ New File</Button>
           </Box>
         </Box>
 
-        {/* === AI Chat Interface === */}
+        {/* AI Chat Section */}
         <Box flex={1}>
           <Paper sx={{ height: '60vh', overflowY: 'auto', p: 2, mb: 2 }}>
             {chatHistory.map((msg, idx) => (
-              <Box key={idx} sx={{ mb: 1, textAlign: msg.sender === 'user' ? 'right' : 'left' }}>
-                <Typography variant="body2" color={msg.sender === 'user' ? 'primary' : 'secondary'}>
-                  {msg.sender === 'user' ? 'You' : 'AI'}: {msg.text}
-                </Typography>
-              </Box>
+              <Message key={idx} msg={msg} />
             ))}
           </Paper>
 
@@ -134,13 +125,34 @@ const CodeEditor = () => {
             placeholder="Ask AI for help..."
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleChatSubmit()}
+            onKeyPress={(e) => e.key === 'Enter' && submitChat()}
           />
-          <Button variant="contained" fullWidth sx={{ mt: 1 }} onClick={handleChatSubmit}>Send</Button>
+          <Button variant="contained" fullWidth sx={{ mt: 1 }} onClick={submitChat}>Send</Button>
         </Box>
       </Box>
     </Box>
   );
 };
+
+// Language Selector Component
+const LanguageSelector = ({ language, onChange }) => (
+  <FormControl fullWidth>
+    <InputLabel>Language</InputLabel>
+    <Select value={language} onChange={onChange} label="Language">
+      <MenuItem value="javascript">JavaScript</MenuItem>
+      <MenuItem value="python">Python</MenuItem>
+      <MenuItem value="java">Java</MenuItem>
+    </Select>
+  </FormControl>
+);
+
+// Message Component
+const Message = ({ msg }) => (
+  <Box sx={{ mb: 1, textAlign: msg.sender === 'user' ? 'right' : 'left' }}>
+    <Typography variant="body2" color={msg.sender === 'user' ? 'primary' : 'secondary'}>
+      {msg.sender === 'user' ? 'You' : 'AI'}: {msg.text}
+    </Typography>
+  </Box>
+);
 
 export default CodeEditor;

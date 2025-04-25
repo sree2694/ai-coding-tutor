@@ -10,6 +10,7 @@ services:
       - app-network
 
   backend:
+    image: codereacher2025/ai_backend:latest
     build:
       context: .
       dockerfile: Dockerfile
